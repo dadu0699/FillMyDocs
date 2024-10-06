@@ -5,47 +5,27 @@ la interpolación de datos en plantillas y la gestión de archivos temporales.
 """
 
 import os
-from contextlib import contextmanager
 from io import BytesIO
-from tempfile import NamedTemporaryFile
 
 from docxtpl import DocxTemplate
-from fastapi import HTTPException
+from app.utils.file_utils import temporary_file
 
 TEMPLATE_DIR = "app/templates/"
 template_cache = {}
 
 
-@contextmanager
-def temporary_file(suffix: str | None = None):
-    """
-    Context manager para manejar la creación y
-    eliminación de archivos temporales.
-    """
-    try:
-        # Crear un archivo temporal
-        temp_file = NamedTemporaryFile(delete=False, suffix=suffix)
-        yield temp_file.name  # Pasar la ruta del archivo temporal
-    finally:
-        # Eliminar el archivo temporal si existe
-        if os.path.exists(temp_file.name):
-            os.remove(temp_file.name)
-
-
-async def render_docx_template(template_name: str, context: dict) -> BytesIO:
+async def render_docx_template(template_name: str, context: dict):
     """
     Procesa un archivo .docx utilizando el contexto proporcionado.
+    Devuelve una tupla con el archivo BytesIO o None y un mensaje de error o None.
     """
     template_path = os.path.join(TEMPLATE_DIR, template_name)
 
     if template_name not in template_cache:
         try:
             template_cache[template_name] = DocxTemplate(template_path)
-        except FileNotFoundError as file_not_found_error:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Template not found: {template_name}"
-            ) from file_not_found_error
+        except FileNotFoundError:
+            return None, f"Template not found: {template_name}"
 
     doc = template_cache[template_name]
 
@@ -55,12 +35,11 @@ async def render_docx_template(template_name: str, context: dict) -> BytesIO:
             doc.save(output_file_path)
 
             with open(output_file_path, "rb") as f:
-                content = f.read()
-                file_stream = BytesIO(content)
-                file_stream.seek(0)
-                return file_stream
+                docx_content = f.read()
+
+            file_stream = BytesIO(docx_content)
+            file_stream.seek(0)
+            return file_stream, None
+
     except Exception as exception:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error processing document: {str(exception)}"
-        ) from exception
+        return None, str(exception)
