@@ -10,22 +10,17 @@ router = APIRouter()
 async def generate_file(
     template_name: str,
     context: dict,
-    output_format: str = "docx"
 ):
     """
     Endpoint para generar un archivo interpolado (DOCX o PDF)
     basado en una plantilla de Word.
     """
-    file_stream = await render_docx_template(
-        template_name,
-        context,
-        output_format
-    )
+    file_stream = await render_docx_template(template_name, context)
 
-    media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if output_format == "docx" else "application/pdf"
     return StreamingResponse(
         file_stream,
-        media_type=media_type,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
-            "Content-Disposition": f"attachment; filename=generated.{output_format}"
-        })
+            "Content-Disposition": "attachment; filename=interpolated_document.docx"
+        }
+    )
