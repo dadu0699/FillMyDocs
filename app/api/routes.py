@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from app.services.docx_service import render_docx_template
-from app.services.pdf_service import convert_to_pdf
 
 router = APIRouter()
 
@@ -23,32 +22,20 @@ async def generate_file(
             detail="Unsupported file format. Use 'docx' or 'pdf'."
         )
 
-    file_stream, error = await render_docx_template(template_name, context)
+    get_pdf = file_format == "pdf"
+    file_stream, error = await render_docx_template(template_name, context, get_pdf=get_pdf)
+
     if error or not file_stream:
         raise HTTPException(status_code=500, detail=error)
 
-    if file_format == "pdf":
-        pdf_stream, error = await convert_to_pdf(file_stream, ".docx")
-        if error or not pdf_stream:
-            # Maneja el error
-            raise HTTPException(status_code=500, detail=error)
+    media_type = "application/pdf" if get_pdf else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    file_extension = "pdf" if get_pdf else "docx"
 
-        pdf_stream.seek(0)
-        return StreamingResponse(
-            pdf_stream,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": "attachment; filename=interpolated_document.pdf",
-                "Content-Length": str(pdf_stream.getbuffer().nbytes)
-            }
-        )
-
-    file_stream.seek(0)
     return StreamingResponse(
         file_stream,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        media_type=media_type,
         headers={
-            "Content-Disposition": "attachment; filename=interpolated_document.docx",
+            "Content-Disposition": f"attachment; filename=interpolated_document.{file_extension}",
             "Content-Length": str(file_stream.getbuffer().nbytes)
         }
     )

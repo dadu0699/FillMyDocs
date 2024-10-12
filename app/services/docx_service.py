@@ -8,16 +8,18 @@ import os
 from io import BytesIO
 
 from docxtpl import DocxTemplate
-from app.utils.file_utils import temporary_file
+
+from app.services.pdf_service import convert_to_pdf
 
 TEMPLATE_DIR = "app/templates/"
 template_cache = {}
 
 
-async def render_docx_template(template_name: str, context: dict):
+async def render_docx_template(template_name: str, context: dict, get_pdf: bool = False):
     """
     Procesa un archivo .docx utilizando el contexto proporcionado.
-    Devuelve una tupla con el archivo BytesIO o None y un mensaje de error o None.
+    Si get_pdf es True, convierte el archivo a PDF antes de devolverlo.
+    Devuelve un BytesIO con el contenido del archivo (docx o pdf) y un mensaje de error o None.
     """
     template_path = os.path.join(TEMPLATE_DIR, template_name)
 
@@ -30,16 +32,18 @@ async def render_docx_template(template_name: str, context: dict):
     doc = template_cache[template_name]
 
     try:
-        with temporary_file(suffix=".docx") as output_file_path:
-            doc.render(context)
-            doc.save(output_file_path)
+        file_stream = BytesIO()
+        doc.render(context)
+        doc.save(file_stream)
+        file_stream.seek(0)
 
-            with open(output_file_path, "rb") as f:
-                docx_content = f.read()
+        if get_pdf:
+            pdf_stream, error = await convert_to_pdf(file_stream, ".docx")
+            if error:
+                return None, error
+            return pdf_stream, None
 
-            file_stream = BytesIO(docx_content)
-            file_stream.seek(0)
-            return file_stream, None
+        return file_stream, None
 
     except Exception as exception:
         return None, str(exception)

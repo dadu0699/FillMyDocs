@@ -1,23 +1,23 @@
 import os
 import subprocess
 from io import BytesIO
-from tempfile import NamedTemporaryFile
+
+from app.utils.file_utils import temporary_file
 
 
 async def convert_to_pdf(file_stream: BytesIO, suffix: str = ".docx"):
     """
     Convierte un archivo (docx, xlsx, etc.) a PDF utilizando LibreOffice en modo headless.
-    Devuelve una tupla con el archivo BytesIO o None y un mensaje de error o None.
+    Devuelve un BytesIO con el contenido PDF.
     """
     try:
-        with NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
-            temp_file.write(file_stream.read())
-            temp_file.flush()
-            temp_file_name = temp_file.name
+        with temporary_file(suffix=suffix) as temp_file_name:
+            with open(temp_file_name, "wb") as temp_file:
+                temp_file.write(file_stream.read())
+                temp_file.flush()
 
-        temp_pdf_name = temp_file_name.replace(suffix, '.pdf')
+            temp_pdf_name = temp_file_name.replace(suffix, '.pdf')
 
-        try:
             subprocess.run(
                 [
                     "libreoffice",
@@ -39,13 +39,14 @@ async def convert_to_pdf(file_stream: BytesIO, suffix: str = ".docx"):
 
             pdf_stream = BytesIO(pdf_content)
             pdf_stream.seek(0)
-            return pdf_stream, None  # Éxito
 
-        finally:
-            if os.path.exists(temp_file_name):
-                os.remove(temp_file_name)
-            if os.path.exists(temp_pdf_name):
-                os.remove(temp_pdf_name)
+            return pdf_stream, None
 
     except subprocess.CalledProcessError as exception:
         return None, str(exception)
+
+    finally:
+        if os.path.exists(temp_file_name):
+            os.remove(temp_file_name)
+        if os.path.exists(temp_pdf_name):
+            os.remove(temp_pdf_name)
