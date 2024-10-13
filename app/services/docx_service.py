@@ -4,8 +4,8 @@ de Microsoft Word utilizando la biblioteca `docxtpl`. Las funciones incluyen
 la interpolación de datos en plantillas y la gestión de archivos temporales.
 """
 
-import os
 from io import BytesIO
+from os import path
 
 from docxtpl import DocxTemplate
 
@@ -21,7 +21,7 @@ async def render_docx_template(template_name: str, context: dict, get_pdf: bool 
     Si get_pdf es True, convierte el archivo a PDF antes de devolverlo.
     Devuelve un BytesIO con el contenido del archivo (docx o pdf) y un mensaje de error o None.
     """
-    template_path = os.path.join(TEMPLATE_DIR, template_name)
+    template_path = path.join(TEMPLATE_DIR, template_name)
 
     if template_name not in template_cache:
         try:

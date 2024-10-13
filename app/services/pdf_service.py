@@ -1,6 +1,6 @@
-import os
 import subprocess
 from io import BytesIO
+from os import path, remove
 
 from app.utils.file_utils import temporary_file
 
@@ -23,7 +23,7 @@ async def convert_to_pdf(file_stream: BytesIO, suffix: str = ".docx"):
                     "libreoffice",
                     "--headless",
                     "--convert-to", "pdf",
-                    "--outdir", os.path.dirname(temp_pdf_name),
+                    "--outdir", path.dirname(temp_pdf_name),
                     temp_file_name
                 ],
                 stdout=subprocess.PIPE,
@@ -46,7 +46,7 @@ async def convert_to_pdf(file_stream: BytesIO, suffix: str = ".docx"):
         return None, str(exception)
 
     finally:
-        if os.path.exists(temp_file_name):
-            os.remove(temp_file_name)
-        if os.path.exists(temp_pdf_name):
-            os.remove(temp_pdf_name)
+        if path.exists(temp_file_name):
+            remove(temp_file_name)
+        if path.exists(temp_pdf_name):
+            remove(temp_pdf_name)
